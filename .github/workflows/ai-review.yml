@@ -29,21 +29,46 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Diagnostic: identify organizations associated with the API key.
-      # Never print the API key itself.
+      # Diagnostic: check organizations associated with the API key.
+      # Never print the API key or full authorization headers.
       - name: Diagnose OpenAI key organization
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           set -euo pipefail
 
-          response=$(curl --silent --show-error \
+          if [ -z "${OPENAI_API_KEY:-}" ]; then
+            echo "::error::OPENAI_API_KEY secret is missing or empty."
+            exit 1
+          fi
+
+          echo "Checking OpenAI key organization..."
+
+          http_code=$(curl --silent --show-error \
+            --output /tmp/openai-me-response.json \
+            --write-out "%{http_code}" \
             https://api.openai.com/v1/me \
             -H "Authorization: Bearer ${OPENAI_API_KEY}")
 
-          echo "$response" | jq '{
+          echo "HTTP status: ${http_code}"
+
+          if [ "${http_code}" != "200" ]; then
+            echo "OpenAI organization endpoint returned an error."
+            jq '{
+              error: {
+                message: .error.message,
+                type: .error.type,
+                code: .error.code
+              }
+            }' /tmp/openai-me-response.json 2>/dev/null \
+              || echo "Response was not valid JSON."
+            exit 1
+          fi
+
+          echo "Organization information:"
+          jq '{
             orgs: [.orgs.data[]? | {id: .id, title: .title}]
-          }'
+          }' /tmp/openai-me-response.json
 
       - name: Run AI code review
         env:
