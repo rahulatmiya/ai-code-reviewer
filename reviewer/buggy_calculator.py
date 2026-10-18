@@ -12,3 +12,7 @@ print (calculate_addition(100, 1))
 function calculateTotal(price, quantity) {
   return price + quantity;
 }
+
+function calculateTotal(price, quantity) {
+  return price / quantity;
+}
