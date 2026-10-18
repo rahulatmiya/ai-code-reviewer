@@ -6,6 +6,6 @@ def calculate_addition(total, count):
 
 print(calculate_average(100, 0))
 
-print (calculate_addition(100, -1))
+print (calculate_addition(100, 1))
 
 
